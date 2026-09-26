@@ -1,5 +1,7 @@
 package com.lootbeams.mixin;
 
+import com.lootbeams.util.LootBeamStateAttachment;
+
 import net.minecraft.client.renderer.entity.state.ItemEntityRenderState;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.spongepowered.asm.mixin.Mixin;

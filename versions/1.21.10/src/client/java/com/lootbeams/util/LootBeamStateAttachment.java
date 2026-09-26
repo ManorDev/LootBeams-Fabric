@@ -1,4 +1,4 @@
-package com.lootbeams.mixin;
+package com.lootbeams.util;
 
 import net.minecraft.entity.ItemEntity;
 

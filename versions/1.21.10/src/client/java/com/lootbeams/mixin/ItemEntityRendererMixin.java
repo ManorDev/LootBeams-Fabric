@@ -1,5 +1,7 @@
 package com.lootbeams.mixin;
 
+import com.lootbeams.util.LootBeamStateAttachment;
+
 import com.lootbeams.LootBeamRenderer;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.ItemEntityRenderer;

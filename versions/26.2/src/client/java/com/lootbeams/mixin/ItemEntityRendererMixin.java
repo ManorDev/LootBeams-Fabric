@@ -1,5 +1,7 @@
 package com.lootbeams.mixin;
 
+import com.lootbeams.util.LootBeamStateAttachment;
+
 import com.lootbeams.LootBeamRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.SubmitNodeCollector;
