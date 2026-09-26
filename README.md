@@ -9,6 +9,7 @@ This project is a multi-version Fabric port of the original Forge LootBeams mod 
 | Minecraft Version | Loader | Subproject | Mappings | Language Level |
 |---|---|---|---|---|
 | 1.21.1 | Fabric | `:v1_21_1` | Yarn | Java 21 |
+| 1.21.4 | Fabric | `:v1_21_4` | Yarn | Java 21 |
 | 1.21.10 | Fabric | `:v1_21_10` | Yarn | Java 21 |
 | 1.21.11 | Fabric | `:v1_21_11` | Yarn | Java 21 |
 | 26.1.2 | Fabric | `:v26_1_2` | Mojmap | Java 25 |
@@ -26,6 +27,7 @@ The project architecture is structured under `versions/<version>` so future vers
 ├── gradle.properties
 ├── versions/
 │   ├── 1.21.1/
+│   ├── 1.21.4/
 │   ├── 1.21.10/
 │   ├── 1.21.11/
 │   ├── 26.1.2/
@@ -34,6 +36,7 @@ The project architecture is structured under `versions/<version>` so future vers
 ```
 
 - **1.21.1**: Uses classic `ItemEntityRenderer` with MatrixStack and VertexConsumerProvider.
+- **1.21.4**: Uses `ItemEntityRenderState` with MatrixStack and VertexConsumerProvider.
 - **1.21.10 / 1.21.11**: Uses modern `ItemEntityRenderState` with `SubmitNodeCollector` / `OrderedRenderCommandQueue`.
 - **26.x**: Uses official Mojang mappings and the modern deferred render submit pipeline.
 
@@ -54,6 +57,7 @@ Build a specific target:
 
 ```bash
 ./gradlew :v1_21_1:build
+./gradlew :v1_21_4:build
 ./gradlew :v1_21_10:build
 ./gradlew :v1_21_11:build
 ./gradlew :v26_1_2:build
