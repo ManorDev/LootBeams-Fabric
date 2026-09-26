@@ -3,13 +3,13 @@ package com.lootbeams;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.block.entity.BeaconBlockEntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.DyedColorComponent;
 import net.minecraft.component.type.NbtComponent;
+import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.item.*;
@@ -20,7 +20,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Rarity;
 import net.minecraft.util.StringHelper;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
@@ -32,7 +32,6 @@ import java.util.Optional;
 public class LootBeamRenderer {
 
 	private static final Identifier LOOT_BEAM_TEXTURE = Identifier.of(LootBeamsClient.MODID, "textures/entity/loot_beam.png");
-	private static final RenderLayer LOOT_BEAM_RENDER_LAYER = RenderLayer.getBeaconBeam(LOOT_BEAM_TEXTURE, true);
 
 	public static void renderLootBeam(MatrixStack matrixStack, VertexConsumerProvider buffer, float pticks, long worldtime, ItemEntity item) {
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
@@ -73,45 +72,36 @@ public class LootBeamRenderer {
 		if (!shouldRender) return;
 
 		float beamAlpha = (float) LootBeamConfig.INSTANCE.beam_alpha;
-		if (distSq < 2.0D) {
-			beamAlpha *= (float) distSq;
+		if (distSq < 1.0D) {
+			beamAlpha *= Math.max(0.25f, (float) Math.sqrt(distSq));
 		}
-		if (beamAlpha <= 0.15f) {
-			return;
-		}
+		final float finalAlpha = beamAlpha;
 
 		float beamRadius = 0.05f * (float) LootBeamConfig.INSTANCE.beam_radius;
 		float glowRadius = beamRadius + (beamRadius * 0.2f);
-		float beamHeight = (float) LootBeamConfig.INSTANCE.beam_height;
 		float yOffset = (float) LootBeamConfig.INSTANCE.beam_y_offset;
 
 		Color color = getItemColor(item);
-		float R = color.getRed() / 255f;
-		float G = color.getGreen() / 255f;
-		float B = color.getBlue() / 255f;
+		int argbColor = ColorHelper.Argb.getArgb((int) (finalAlpha * 255), color.getRed(), color.getGreen(), color.getBlue());
 
 		matrixStack.push();
-
-		// Render main beam
-		matrixStack.push();
-		float rotation = (float) Math.floorMod(worldtime, 40L) + pticks;
-		matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rotation * 2.25F - 45.0F));
-		matrixStack.translate(0, yOffset, 0);
-		matrixStack.translate(0, 1, 0);
-		matrixStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180));
-		renderPart(matrixStack, buffer.getBuffer(LOOT_BEAM_RENDER_LAYER), R, G, B, beamAlpha, beamHeight, 0.0F, beamRadius, beamRadius, 0.0F, -beamRadius, 0.0F, 0.0F, -beamRadius);
-		matrixStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-180));
-		renderPart(matrixStack, buffer.getBuffer(LOOT_BEAM_RENDER_LAYER), R, G, B, beamAlpha, beamHeight, 0.0F, beamRadius, beamRadius, 0.0F, -beamRadius, 0.0F, 0.0F, -beamRadius);
-		matrixStack.pop();
-
-		// Render glow around main beam
-		matrixStack.translate(0, yOffset, 0);
-		matrixStack.translate(0, 1, 0);
-		matrixStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180));
-		renderPart(matrixStack, buffer.getBuffer(LOOT_BEAM_RENDER_LAYER), R, G, B, beamAlpha * 0.4f, beamHeight, -glowRadius, -glowRadius, glowRadius, -glowRadius, -beamRadius, glowRadius, glowRadius, glowRadius);
-		matrixStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-180));
-		renderPart(matrixStack, buffer.getBuffer(LOOT_BEAM_RENDER_LAYER), R, G, B, beamAlpha * 0.4f, beamHeight, -glowRadius, -glowRadius, glowRadius, -glowRadius, -beamRadius, glowRadius, glowRadius, glowRadius);
-
+		matrixStack.translate(-0.5D, yOffset, -0.5D);
+		if (LootBeamConfig.INSTANCE.beam_height != 1.0D) {
+			matrixStack.scale(1.0F, (float) LootBeamConfig.INSTANCE.beam_height, 1.0F);
+		}
+		BeaconBlockEntityRenderer.renderBeam(
+				matrixStack,
+				buffer,
+				LOOT_BEAM_TEXTURE,
+				pticks,
+				1.0F,
+				worldtime,
+				0,
+				1,
+				argbColor,
+				beamRadius,
+				glowRadius
+		);
 		matrixStack.pop();
 
 		if (LootBeamConfig.INSTANCE.render_nametags) {
@@ -188,6 +178,19 @@ public class LootBeamRenderer {
 				return Color.decode(customData.copyNbt().getString("lootbeams.color"));
 			}
 
+			PotionContentsComponent potionContents = stack.get(DataComponentTypes.POTION_CONTENTS);
+			if (potionContents != null) {
+				int potionColor = potionContents.getColor();
+				if (potionColor != -1) {
+					return new Color(potionColor);
+				}
+			}
+
+			DyedColorComponent dyedColor = stack.get(DataComponentTypes.DYED_COLOR);
+			if (dyedColor != null) {
+				return new Color(dyedColor.rgb());
+			}
+
 			if (LootBeamConfig.INSTANCE.render_name_color) {
 				Color nameColor = getRawColor(stack.getName());
 				if (!nameColor.equals(Color.WHITE)) {
@@ -195,11 +198,16 @@ public class LootBeamRenderer {
 				}
 			}
 
-			if (LootBeamConfig.INSTANCE.render_rarity_color) {
+			if (LootBeamConfig.INSTANCE.render_rarity_color && stack.getRarity() != Rarity.COMMON) {
 				Formatting fmt = stack.getRarity().getFormatting();
 				if (fmt != null && fmt.getColorValue() != null) {
 					return new Color(fmt.getColorValue());
 				}
+			}
+
+			Color materialColor = getMaterialColor(stack.getItem());
+			if (!materialColor.equals(Color.WHITE)) {
+				return materialColor;
 			}
 
 			return Color.WHITE;
@@ -207,6 +215,33 @@ public class LootBeamRenderer {
 			LootBeamsClient.CRASH_BLACKLIST.add(stack);
 			return Color.WHITE;
 		}
+	}
+
+	private static Color getMaterialColor(Item item) {
+		Identifier id = Registries.ITEM.getId(item);
+		String path = id.getPath();
+
+		if (path.contains("netherite")) return new Color(0x655E65);
+		if (path.contains("diamond")) return new Color(0x4AEDD9);
+		if (path.contains("emerald")) return new Color(0x17DD62);
+		if (path.contains("gold") || path.contains("gilded")) return new Color(0xFDF55F);
+		if (path.contains("copper")) return new Color(0xE77C56);
+		if (path.contains("amethyst")) return new Color(0xC78BFA);
+		if (path.contains("redstone")) return new Color(0xFF2200);
+		if (path.contains("lapis")) return new Color(0x254FC7);
+		if (path.contains("iron")) return new Color(0xD8D8D8);
+		if (path.contains("ender_pearl") || path.contains("eye_of_ender")) return new Color(0x1B8272);
+		if (path.contains("echo_shard") || path.contains("sculk")) return new Color(0x056B7A);
+		if (path.contains("blaze")) return new Color(0xFFAA00);
+		if (path.contains("slime")) return new Color(0x7AC764);
+		if (path.contains("prismarine")) return new Color(0x5B9C8E);
+		if (path.contains("glowstone")) return new Color(0xFFBC5E);
+		if (path.contains("quartz")) return new Color(0xEAE5DE);
+		if (path.contains("coal") || path.contains("charcoal")) return new Color(0x383838);
+		if (path.contains("totem")) return new Color(0xE2B024);
+		if (path.contains("apple")) return new Color(0xE82323);
+
+		return Color.WHITE;
 	}
 
 	private static Color getRawColor(Text text) {
@@ -234,26 +269,6 @@ public class LootBeamRenderer {
 			}
 		}
 		return false;
-	}
-
-	private static void renderPart(MatrixStack stack, VertexConsumer builder, float red, float green, float blue, float alpha, float height, float radius_1, float radius_2, float radius_3, float radius_4, float radius_5, float radius_6, float radius_7, float radius_8) {
-		MatrixStack.Entry matrixentry = stack.peek();
-		Matrix4f matrixpose = matrixentry.getPositionMatrix();
-		renderQuad(matrixpose, matrixentry, builder, red, green, blue, alpha, height, radius_1, radius_2, radius_3, radius_4);
-		renderQuad(matrixpose, matrixentry, builder, red, green, blue, alpha, height, radius_7, radius_8, radius_5, radius_6);
-		renderQuad(matrixpose, matrixentry, builder, red, green, blue, alpha, height, radius_3, radius_4, radius_7, radius_8);
-		renderQuad(matrixpose, matrixentry, builder, red, green, blue, alpha, height, radius_5, radius_6, radius_1, radius_2);
-	}
-
-	private static void renderQuad(Matrix4f pose, MatrixStack.Entry entry, VertexConsumer builder, float red, float green, float blue, float alpha, float y, float z1, float texu1, float z, float texu) {
-		addVertex(pose, entry, builder, red, green, blue, alpha, y, z1, texu1, 1f, 0f);
-		addVertex(pose, entry, builder, red, green, blue, alpha, 0f, z1, texu1, 1f, 1f);
-		addVertex(pose, entry, builder, red, green, blue, alpha, 0f, z, texu, 0f, 1f);
-		addVertex(pose, entry, builder, red, green, blue, alpha, y, z, texu, 0f, 0f);
-	}
-
-	private static void addVertex(Matrix4f pose, MatrixStack.Entry entry, VertexConsumer builder, float red, float green, float blue, float alpha, float y, float x, float z, float texu, float texv) {
-		builder.vertex(pose, x, y, z).color(red, green, blue, alpha).texture(texu, texv).overlay(OverlayTexture.DEFAULT_UV).light(15728880).normal(entry, 0.0F, 1.0F, 0.0F);
 	}
 
 	private static boolean isLookingAt(ClientPlayerEntity player, Entity target, double accuracy) {
