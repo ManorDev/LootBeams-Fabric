@@ -38,6 +38,7 @@ public class LootBeamRenderer {
 	private static final Identifier LOOT_BEAM_TEXTURE = Identifier.of(LootBeamsClient.MODID, "textures/entity/loot_beam.png");
 
 	public static void renderLootBeam(MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState camera, ItemEntity item) {
+		if (!LootBeamConfig.INSTANCE.enabled) return;
 		ClientPlayerEntity player = MinecraftClient.getInstance().player;
 		if (player == null) return;
 

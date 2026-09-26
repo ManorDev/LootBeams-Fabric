@@ -21,6 +21,7 @@ public class LootBeamConfig {
 	public static ConfigData INSTANCE = new ConfigData();
 
 	public static class ConfigData {
+		public boolean enabled = true;
 		public boolean all_items = true;
 		public boolean only_rare = false;
 		public boolean only_equipment = false;

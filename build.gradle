@@ -2,6 +2,11 @@
 
 subprojects {
     apply plugin: 'maven-publish'
+    repositories {
+        mavenCentral()
+        google()
+        maven { url = "https://repo.polyfrost.org/releases" }
+    }
 }
 
 task buildAll {

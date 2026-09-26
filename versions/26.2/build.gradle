@@ -23,6 +23,9 @@ dependencies {
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	compileOnly("org.polyfrost.oneconfig:config-impl:1.2.7") {
+		transitive = false
+	}
 }
 
 processResources {

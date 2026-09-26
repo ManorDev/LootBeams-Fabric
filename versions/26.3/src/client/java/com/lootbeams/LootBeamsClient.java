@@ -1,6 +1,7 @@
 package com.lootbeams;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,14 @@ public class LootBeamsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		LootBeamConfig.load();
+		if (FabricLoader.getInstance().isModLoaded("oneconfig")) {
+			try {
+				com.lootbeams.compat.oneconfig.LootBeamsOneConfig.init();
+				LOGGER.info("LootBeams OneConfig integration initialized");
+			} catch (Throwable t) {
+				LOGGER.warn("Failed to initialize OneConfig integration: {}", t.getMessage());
+			}
+		}
 		LOGGER.info("LootBeams initialized for Fabric");
 	}
 }
