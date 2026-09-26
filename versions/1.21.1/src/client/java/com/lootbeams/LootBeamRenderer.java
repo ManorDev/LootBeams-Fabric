@@ -124,15 +124,13 @@ public class LootBeamRenderer {
 		int g = color.getGreen();
 		int b = color.getBlue();
 
-		float y0 = 0.0F;
-		float y1 = 0.5F;
-		float y2 = 0.85F;
-		float y3 = Math.max(y2 + 0.15F, (float) (2.0D * heightScale));
+		float y0 = 0.5F;
+		float y1 = y0 + 0.10F;
+		float y2 = y0 + Math.max(0.5F, (float) (2.0D * heightScale));
 
 		int c0 = toArgb(0, r, g, b);
-		int c1 = toArgb((int) (0.15F * finalAlpha * 255), r, g, b);
+		int c1 = toArgb((int) (finalAlpha * 255), r, g, b);
 		int c2 = toArgb((int) (finalAlpha * 255), r, g, b);
-		int c3 = toArgb((int) (finalAlpha * 255), r, g, b);
 
 		float animTime = (float) Math.floorMod(worldtime, 40L) + pticks;
 		float anim = -animTime;
@@ -156,7 +154,6 @@ public class LootBeamRenderer {
 		MatrixStack.Entry innerEntry = matrixStack.peek();
 		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y0, y1, c0, c1, vBase, innerTexScale);
 		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y1, y2, c1, c2, vBase, innerTexScale);
-		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y2, y3, c2, c3, vBase, innerTexScale);
 		matrixStack.pop();
 
 		// 2. Outer translucent glow beam (axis-aligned square)
@@ -170,7 +167,6 @@ public class LootBeamRenderer {
 		MatrixStack.Entry glowEntry = matrixStack.peek();
 		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y0, y1, c0, c1, vBase, glowTexScale);
 		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y1, y2, c1, c2, vBase, glowTexScale);
-		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y2, y3, c2, c3, vBase, glowTexScale);
 
 		matrixStack.pop();
 	}
