@@ -126,7 +126,7 @@ public class LootBeamRenderer {
 
 		float y0 = 0.5F;
 		float y1 = y0 + 0.10F;
-		float y2 = y0 + Math.max(0.5F, (float) (2.0D * heightScale));
+		float y2 = y0 + Math.max(0.5F, (float) (1.4D * heightScale));
 
 		int c0 = toArgb(0, r, g, b);
 		int c1 = toArgb((int) (finalAlpha * 255), r, g, b);
