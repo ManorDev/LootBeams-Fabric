@@ -12,7 +12,7 @@ public class LootBeamsOneConfig extends Config {
 			title = "Enable LootBeams",
 			description = "Master switch to enable or disable loot beams and nametags"
 	)
-	public static boolean enabled = true;
+	public static boolean enabled = false;
 
 	@Switch(
 			title = "All Items",
