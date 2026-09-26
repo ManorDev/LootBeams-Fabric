@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.lootbeams.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ItemEntityRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

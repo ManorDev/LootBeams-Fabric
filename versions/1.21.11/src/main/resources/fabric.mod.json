@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "lootbeams",
+	"version": "${version}",
+	"name": "LootBeams",
+	"description": "Adds customizable glowing beams of light and nametags to dropped items.",
+	"authors": [
+		"shiroroku"
+	],
+	"contact": {},
+	"license": "MIT",
+	"icon": "assets/lootbeams/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.lootbeams.LootBeamsClient"
+		]
+	},
+	"mixins": [
+		"lootbeams.client.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

@@ -1,0 +1,27 @@
+# Gradle files
+.gradle/
+build/
+versions/*/.gradle/
+versions/*/build/
+
+# Do not ignore Gradle wrapper jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+
+# Minecraft client/server runs
+run/
+versions/*/run/
+
+# Logs
+*.log
+logs/
+versions/*/logs/

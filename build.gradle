@@ -1,0 +1,11 @@
+// Root project orchestrates all version subprojects
+
+subprojects {
+    apply plugin: 'maven-publish'
+}
+
+task buildAll {
+    dependsOn subprojects.collect { it.tasks.matching { t -> t.name == 'build' } }
+}
+
+defaultTasks 'build'
