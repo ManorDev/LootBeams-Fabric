@@ -93,7 +93,7 @@ public class LootBeamsOneConfig extends Config {
 	public static boolean borders = true;
 
 	public LootBeamsOneConfig() {
-		super("lootbeams.json", "LootBeams", "/assets/lootbeams/icon.png", Category.VISUALS);
+		super("lootbeams.json", "/assets/lootbeams/icon.png", "LootBeams", Category.VISUALS);
 		addCallback("enabled", LootBeamsOneConfig::syncToModConfig);
 		addCallback("allItems", LootBeamsOneConfig::syncToModConfig);
 		addCallback("onlyRare", LootBeamsOneConfig::syncToModConfig);
@@ -109,7 +109,6 @@ public class LootBeamsOneConfig extends Config {
 	}
 
 	public static void init() {
-		INSTANCE.preload();
 		syncToModConfig();
 	}
 

@@ -22,7 +22,7 @@ public class LootBeamsClient implements ClientModInitializer {
 				com.lootbeams.compat.oneconfig.LootBeamsOneConfig.init();
 				LOGGER.info("LootBeams OneConfig integration initialized");
 			} catch (Throwable t) {
-				LOGGER.warn("Failed to initialize OneConfig integration: {}", t.getMessage());
+				LOGGER.warn("Failed to initialize OneConfig integration", t);
 			}
 		}
 		LOGGER.info("LootBeams initialized for Fabric");
