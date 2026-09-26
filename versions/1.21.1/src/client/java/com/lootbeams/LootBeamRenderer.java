@@ -3,8 +3,10 @@ package com.lootbeams;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.block.entity.BeaconBlockEntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.DyedColorComponent;
@@ -20,7 +22,8 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Rarity;
 import net.minecraft.util.StringHelper;
-import net.minecraft.util.math.ColorHelper;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
@@ -82,31 +85,147 @@ public class LootBeamRenderer {
 		float yOffset = (float) LootBeamConfig.INSTANCE.beam_y_offset;
 
 		Color color = getItemColor(item);
-		int argbColor = ColorHelper.Argb.getArgb((int) (finalAlpha * 255), color.getRed(), color.getGreen(), color.getBlue());
 
-		matrixStack.push();
-		matrixStack.translate(-0.5D, yOffset, -0.5D);
-		if (LootBeamConfig.INSTANCE.beam_height != 1.0D) {
-			matrixStack.scale(1.0F, (float) LootBeamConfig.INSTANCE.beam_height, 1.0F);
-		}
-		BeaconBlockEntityRenderer.renderBeam(
+		renderSegmentedBeam(
 				matrixStack,
 				buffer,
-				LOOT_BEAM_TEXTURE,
+				color,
+				finalAlpha,
 				pticks,
-				1.0F,
 				worldtime,
-				0,
-				1,
-				argbColor,
+				yOffset,
 				beamRadius,
-				glowRadius
+				glowRadius,
+				(float) LootBeamConfig.INSTANCE.beam_height
 		);
-		matrixStack.pop();
 
 		if (LootBeamConfig.INSTANCE.render_nametags) {
 			renderNameTag(matrixStack, buffer, item, color);
 		}
+	}
+
+	private static int toArgb(int a, int r, int g, int b) {
+		return ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+	}
+
+	private static void renderSegmentedBeam(
+			MatrixStack matrixStack,
+			VertexConsumerProvider buffer,
+			Color color,
+			float finalAlpha,
+			float pticks,
+			long worldtime,
+			float yOffset,
+			float innerRadius,
+			float glowRadius,
+			float heightScale
+	) {
+		int r = color.getRed();
+		int g = color.getGreen();
+		int b = color.getBlue();
+
+		float y0 = 0.0F;
+		float y1 = 0.5F;
+		float y2 = 0.85F;
+		float y3 = Math.max(y2 + 0.15F, (float) (2.0D * heightScale));
+
+		int c0 = toArgb(0, r, g, b);
+		int c1 = toArgb((int) (0.15F * finalAlpha * 255), r, g, b);
+		int c2 = toArgb((int) (finalAlpha * 255), r, g, b);
+		int c3 = toArgb((int) (finalAlpha * 255), r, g, b);
+
+		float animTime = (float) Math.floorMod(worldtime, 40L) + pticks;
+		float anim = -animTime;
+		float vOffset = MathHelper.fractionalPart(anim * 0.2F - (float) MathHelper.floor(anim * 0.1F));
+		float vBase = -1.0F + vOffset;
+
+		matrixStack.push();
+		matrixStack.translate(0.0D, yOffset, 0.0D);
+
+		// 1. Inner solid beam (rotating diamond)
+		float innerTexScale = 0.5F / innerRadius;
+		matrixStack.push();
+		matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(animTime * 2.25F - 45.0F));
+
+		float inC1x = 0.0F, inC1z = innerRadius;
+		float inC2x = innerRadius, inC2z = 0.0F;
+		float inC3x = 0.0F, inC3z = -innerRadius;
+		float inC4x = -innerRadius, inC4z = 0.0F;
+
+		VertexConsumer innerConsumer = buffer.getBuffer(RenderLayer.getBeaconBeam(LOOT_BEAM_TEXTURE, false));
+		MatrixStack.Entry innerEntry = matrixStack.peek();
+		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y0, y1, c0, c1, vBase, innerTexScale);
+		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y1, y2, c1, c2, vBase, innerTexScale);
+		renderBeamPrism(innerEntry, innerConsumer, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y2, y3, c2, c3, vBase, innerTexScale);
+		matrixStack.pop();
+
+		// 2. Outer translucent glow beam (axis-aligned square)
+		float glowTexScale = 1.0F;
+		float glC1x = -glowRadius, glC1z = -glowRadius;
+		float glC2x = glowRadius, glC2z = -glowRadius;
+		float glC3x = glowRadius, glC3z = glowRadius;
+		float glC4x = -glowRadius, glC4z = glowRadius;
+
+		VertexConsumer glowConsumer = buffer.getBuffer(RenderLayer.getBeaconBeam(LOOT_BEAM_TEXTURE, true));
+		MatrixStack.Entry glowEntry = matrixStack.peek();
+		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y0, y1, c0, c1, vBase, glowTexScale);
+		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y1, y2, c1, c2, vBase, glowTexScale);
+		renderBeamPrism(glowEntry, glowConsumer, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y2, y3, c2, c3, vBase, glowTexScale);
+
+		matrixStack.pop();
+	}
+
+	private static void renderBeamPrism(
+			MatrixStack.Entry entry,
+			VertexConsumer builder,
+			float x1, float z1,
+			float x2, float z2,
+			float x3, float z3,
+			float x4, float z4,
+			float minY, float maxY,
+			int bottomColor, int topColor,
+			float vBase, float texScale
+	) {
+		float u1 = 0.0F;
+		float u2 = 1.0F;
+		float v1 = minY * texScale + vBase;
+		float v2 = maxY * texScale + vBase;
+
+		renderQuad(entry, builder, bottomColor, topColor, minY, maxY, x1, z1, x2, z2, u1, u2, v1, v2);
+		renderQuad(entry, builder, bottomColor, topColor, minY, maxY, x3, z3, x4, z4, u1, u2, v1, v2);
+		renderQuad(entry, builder, bottomColor, topColor, minY, maxY, x2, z2, x3, z3, u1, u2, v1, v2);
+		renderQuad(entry, builder, bottomColor, topColor, minY, maxY, x4, z4, x1, z1, u1, u2, v1, v2);
+	}
+
+	private static void renderQuad(
+			MatrixStack.Entry entry,
+			VertexConsumer builder,
+			int bottomColor, int topColor,
+			float minY, float maxY,
+			float x1, float z1,
+			float x2, float z2,
+			float u1, float u2,
+			float v1, float v2
+	) {
+		addVertex(entry, builder, topColor, maxY, x1, z1, u2, v2);
+		addVertex(entry, builder, bottomColor, minY, x1, z1, u2, v1);
+		addVertex(entry, builder, bottomColor, minY, x2, z2, u1, v1);
+		addVertex(entry, builder, topColor, maxY, x2, z2, u1, v2);
+	}
+
+	private static void addVertex(
+			MatrixStack.Entry entry,
+			VertexConsumer builder,
+			int color,
+			float y, float x, float z,
+			float u, float v
+	) {
+		builder.vertex(entry, x, y, z)
+				.color(color)
+				.texture(u, v)
+				.overlay(OverlayTexture.DEFAULT_UV)
+				.light(15728880)
+				.normal(entry, 0.0F, 1.0F, 0.0F);
 	}
 
 	private static void renderNameTag(MatrixStack matrixStack, VertexConsumerProvider buffer, ItemEntity item, Color color) {

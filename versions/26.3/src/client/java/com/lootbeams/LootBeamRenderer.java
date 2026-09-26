@@ -1,10 +1,14 @@
 package com.lootbeams;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -12,14 +16,13 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
-import net.minecraft.client.renderer.blockentity.BeaconRenderer;
-import net.minecraft.util.ARGB;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.DyedItemColor;
@@ -83,32 +86,145 @@ public class LootBeamRenderer {
 		float yOffset = (float) LootBeamConfig.INSTANCE.beam_y_offset;
 
 		Color color = getItemColor(item);
-		int argbColor = ARGB.color((int) (finalAlpha * 255), color.getRed(), color.getGreen(), color.getBlue());
-
 		float animTime = (float) Math.floorMod(item.level().getGameTime(), 40L);
 
-		poseStack.pushPose();
-		poseStack.translate(-0.5D, yOffset, -0.5D);
-		if (LootBeamConfig.INSTANCE.beam_height != 1.0D) {
-			poseStack.scale(1.0F, (float) LootBeamConfig.INSTANCE.beam_height, 1.0F);
-		}
-		BeaconRenderer.submitBeaconBeam(
+		renderSegmentedBeam(
 				poseStack,
 				queue,
-				LOOT_BEAM_TEXTURE,
-				1.0F,
+				color,
+				finalAlpha,
 				animTime,
-				0,
-				1,
-				argbColor,
+				yOffset,
 				beamRadius,
-				glowRadius
+				glowRadius,
+				(float) LootBeamConfig.INSTANCE.beam_height
 		);
-		poseStack.popPose();
 
 		if (LootBeamConfig.INSTANCE.render_nametags) {
 			renderNameTag(poseStack, queue, camera, item, color);
 		}
+	}
+
+	private static int toArgb(int a, int r, int g, int b) {
+		return ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+	}
+
+	private static void renderSegmentedBeam(
+			PoseStack poseStack,
+			SubmitNodeCollector queue,
+			Color color,
+			float finalAlpha,
+			float animTime,
+			float yOffset,
+			float innerRadius,
+			float glowRadius,
+			float heightScale
+	) {
+		int r = color.getRed();
+		int g = color.getGreen();
+		int b = color.getBlue();
+
+		float y0 = 0.0F;
+		float y1 = 0.5F;
+		float y2 = 0.85F;
+		float y3 = Math.max(y2 + 0.15F, (float) (2.0D * heightScale));
+
+		int c0 = toArgb(0, r, g, b);
+		int c1 = toArgb((int) (0.15F * finalAlpha * 255), r, g, b);
+		int c2 = toArgb((int) (finalAlpha * 255), r, g, b);
+		int c3 = toArgb((int) (finalAlpha * 255), r, g, b);
+
+		float anim = -animTime;
+		float vOffset = Mth.frac(anim * 0.2F - (float) Mth.floor(anim * 0.1F));
+		float vBase = -1.0F + vOffset;
+
+		poseStack.pushPose();
+		poseStack.translate(0.0D, yOffset, 0.0D);
+
+		// 1. Inner solid beam (rotating diamond)
+		float innerTexScale = 0.5F / innerRadius;
+		poseStack.pushPose();
+		poseStack.rotateDegrees(Axis.YP, animTime * 2.25F - 45.0F);
+
+		float inC1x = 0.0F, inC1z = innerRadius;
+		float inC2x = innerRadius, inC2z = 0.0F;
+		float inC3x = 0.0F, inC3z = -innerRadius;
+		float inC4x = -innerRadius, inC4z = 0.0F;
+
+		queue.submitCustomGeometry(poseStack, RenderTypes.beaconBeam(LOOT_BEAM_TEXTURE, false), (pose, builder) -> {
+			renderBeamPrism(pose, builder, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y0, y1, c0, c1, vBase, innerTexScale);
+			renderBeamPrism(pose, builder, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y1, y2, c1, c2, vBase, innerTexScale);
+			renderBeamPrism(pose, builder, inC1x, inC1z, inC2x, inC2z, inC3x, inC3z, inC4x, inC4z, y2, y3, c2, c3, vBase, innerTexScale);
+		});
+		poseStack.popPose();
+
+		// 2. Outer translucent glow beam (axis-aligned square)
+		float glowTexScale = 1.0F;
+		float glC1x = -glowRadius, glC1z = -glowRadius;
+		float glC2x = glowRadius, glC2z = -glowRadius;
+		float glC3x = glowRadius, glC3z = glowRadius;
+		float glC4x = -glowRadius, glC4z = glowRadius;
+
+		queue.submitCustomGeometry(poseStack, RenderTypes.beaconBeam(LOOT_BEAM_TEXTURE, true), (pose, builder) -> {
+			renderBeamPrism(pose, builder, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y0, y1, c0, c1, vBase, glowTexScale);
+			renderBeamPrism(pose, builder, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y1, y2, c1, c2, vBase, glowTexScale);
+			renderBeamPrism(pose, builder, glC1x, glC1z, glC2x, glC2z, glC3x, glC3z, glC4x, glC4z, y2, y3, c2, c3, vBase, glowTexScale);
+		});
+
+		poseStack.popPose();
+	}
+
+	private static void renderBeamPrism(
+			PoseStack.Pose pose,
+			VertexConsumer builder,
+			float x1, float z1,
+			float x2, float z2,
+			float x3, float z3,
+			float x4, float z4,
+			float minY, float maxY,
+			int bottomColor, int topColor,
+			float vBase, float texScale
+	) {
+		float u1 = 0.0F;
+		float u2 = 1.0F;
+		float v1 = minY * texScale + vBase;
+		float v2 = maxY * texScale + vBase;
+
+		renderQuad(pose, builder, bottomColor, topColor, minY, maxY, x1, z1, x2, z2, u1, u2, v1, v2);
+		renderQuad(pose, builder, bottomColor, topColor, minY, maxY, x3, z3, x4, z4, u1, u2, v1, v2);
+		renderQuad(pose, builder, bottomColor, topColor, minY, maxY, x2, z2, x3, z3, u1, u2, v1, v2);
+		renderQuad(pose, builder, bottomColor, topColor, minY, maxY, x4, z4, x1, z1, u1, u2, v1, v2);
+	}
+
+	private static void renderQuad(
+			PoseStack.Pose pose,
+			VertexConsumer builder,
+			int bottomColor, int topColor,
+			float minY, float maxY,
+			float x1, float z1,
+			float x2, float z2,
+			float u1, float u2,
+			float v1, float v2
+	) {
+		addVertex(pose, builder, topColor, maxY, x1, z1, u2, v2);
+		addVertex(pose, builder, bottomColor, minY, x1, z1, u2, v1);
+		addVertex(pose, builder, bottomColor, minY, x2, z2, u1, v1);
+		addVertex(pose, builder, topColor, maxY, x2, z2, u1, v2);
+	}
+
+	private static void addVertex(
+			PoseStack.Pose pose,
+			VertexConsumer builder,
+			int color,
+			float y, float x, float z,
+			float u, float v
+	) {
+		builder.addVertex(pose, x, y, z)
+				.setColor(color)
+				.setUv(u, v)
+				.setOverlay(OverlayTexture.NO_OVERLAY)
+				.setLight(15728880)
+				.setNormal(pose, 0.0F, 1.0F, 0.0F);
 	}
 
 	private static void renderNameTag(PoseStack poseStack, SubmitNodeCollector queue, CameraRenderState camera, ItemEntity item, Color color) {
