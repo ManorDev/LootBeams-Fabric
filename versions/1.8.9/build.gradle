@@ -1,0 +1,41 @@
+plugins {
+	id 'fabric-loom' version '1.17-SNAPSHOT'
+	id 'legacy-looming' version '1.16.1'
+	id 'maven-publish'
+}
+
+base {
+	archivesName = "lootbeams"
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.legacyfabric:yarn:${project.minecraft_version}+build.${project.yarn_build}:v2"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	implementation "net.legacyfabric.legacy-fabric-api:legacy-fabric-api:${project.fabric_version}"
+
+	compileOnly "net.fabricmc:sponge-mixin:0.15.4+mixin.0.8.7"
+	compileOnly("org.polyfrost.oneconfig:config-impl:1.2.7") {
+		transitive = false
+	}
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}

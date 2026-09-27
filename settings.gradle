@@ -4,12 +4,19 @@ pluginManagement {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
 		}
+		maven {
+			name = 'Legacy Fabric'
+			url = 'https://maven.legacyfabric.net/'
+		}
 		mavenCentral()
 		gradlePluginPortal()
 	}
 }
 
 rootProject.name = 'lootbeams'
+
+include 'v1_8_9'
+project(':v1_8_9').projectDir = file('versions/1.8.9')
 
 include 'v1_21_1'
 project(':v1_21_1').projectDir = file('versions/1.21.1')

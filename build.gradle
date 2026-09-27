@@ -6,6 +6,7 @@ subprojects {
         mavenCentral()
         google()
         maven { url = "https://repo.polyfrost.org/releases" }
+        maven { url = "https://maven.legacyfabric.net/" }
     }
 }
 
